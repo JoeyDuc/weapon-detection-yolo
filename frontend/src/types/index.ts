@@ -1,11 +1,76 @@
-export type Detection = {class_name:'knife'|'gun';confidence:number;bounding_box:[number,number,number,number]}
-export type ModelStatus = {ready:boolean;checkpoint:string;supported_classes:string[];device:string;available_devices:string[];error:string|null;limitation:string|null}
-export type Health = {status:string;database:string;version:string;storage:string}
-export type Summary = {total_analyses:number;total_detections:number;alerts_generated:number;average_confidence:number}
-export type Timeline = {date:string;detections:number;alerts:number;analyses:number}[]
-export type Distribution = {categories:{name:string;value:number}[];confidence:{name:string;value:number}[];sources:{name:string;value:number}[]}
-export type DetectionEvent = Detection & {id:string;job_id:string|null;session_id:string|null;source_type:string;source_filename:string|null;is_alert:boolean;timestamp:string;video_time:number|null;evidence_url:string|null}
-export type EventPage = {items:DetectionEvent[];total:number;page:number;page_size:number}
-export type ImageResult = {job_id:string;detections:Detection[];output_url:string;latency_ms:number;width:number;height:number}
-export type VideoJob = {id:string;source_type:string;original_filename:string;status:'uploaded'|'processing'|'cancelling'|'cancelled'|'completed'|'failed';progress:number;created_at:string;completed_at:string|null;error_message:string|null;media_metadata:{duration:number;width:number;height:number;fps:number;frame_count:number;events?:number};output_url:string|null}
-export type DetectionSettings = {confidence:number;iou:number;image_size:number;device:'auto'|'cpu'|'mps';confirmation_frames:number;alert_cooldown:number;show_boxes:boolean;show_labels:boolean}
+export type Detection = {
+  class_name: 'knife' | 'gun'
+  confidence: number
+  bounding_box: [number, number, number, number]
+}
+export type ModelStatus = {
+  ready: boolean
+  checkpoint: string
+  supported_classes: string[]
+  device: string
+  available_devices: string[]
+  error: string | null
+  limitation: string | null
+}
+export type Health = { status: string; database: string; version: string; storage: string }
+export type Summary = {
+  total_analyses: number
+  total_detections: number
+  alerts_generated: number
+  average_confidence: number
+}
+export type Timeline = { date: string; detections: number; alerts: number; analyses: number }[]
+export type Distribution = {
+  categories: { name: string; value: number }[]
+  confidence: { name: string; value: number }[]
+  sources: { name: string; value: number }[]
+}
+export type DetectionEvent = Detection & {
+  id: string
+  job_id: string | null
+  session_id: string | null
+  source_type: string
+  source_filename: string | null
+  is_alert: boolean
+  timestamp: string
+  video_time: number | null
+  evidence_url: string | null
+}
+export type EventPage = { items: DetectionEvent[]; total: number; page: number; page_size: number }
+export type ImageResult = {
+  job_id: string
+  detections: Detection[]
+  output_url: string
+  latency_ms: number
+  width: number
+  height: number
+}
+export type VideoJob = {
+  id: string
+  source_type: string
+  original_filename: string
+  status: 'uploaded' | 'processing' | 'cancelling' | 'cancelled' | 'completed' | 'failed'
+  progress: number
+  created_at: string
+  completed_at: string | null
+  error_message: string | null
+  media_metadata: {
+    duration: number
+    width: number
+    height: number
+    fps: number
+    frame_count: number
+    events?: number
+  }
+  output_url: string | null
+}
+export type DetectionSettings = {
+  confidence: number
+  iou: number
+  image_size: number
+  device: 'auto' | 'cpu' | 'mps'
+  confirmation_frames: number
+  alert_cooldown: number
+  show_boxes: boolean
+  show_labels: boolean
+}

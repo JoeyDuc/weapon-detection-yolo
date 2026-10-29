@@ -1,0 +1,1 @@
+These are generated uniform-color negative fixtures. They contain no weapons or people. Integration tests run the actual YOLO model; they verify transport, processing, export, playback and cleanup, not positive-class accuracy.

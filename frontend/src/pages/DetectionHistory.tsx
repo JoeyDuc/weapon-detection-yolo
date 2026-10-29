@@ -1,12 +1,389 @@
-import {useEffect,useState} from 'react'
-import {useSearchParams} from 'react-router-dom'
-import {useMutation,useQuery,useQueryClient} from '@tanstack/react-query'
-import {Activity,ArrowDownToLine,ChevronLeft,ChevronRight,Image,Search,Trash2,X} from 'lucide-react'
-import {toast} from 'sonner'
-import {api,getEvents,errorMessage,asset} from '../services/api'
-import {Card,PageIntro,SectionHeading,EmptyState,ErrorState,Loading,Badge,ConfirmDialog} from '../components/shared/Common'
-import {Dialog} from '../components/ui/dialog'
-import {Button} from '../components/ui/button'
-import type {DetectionEvent} from '../types'
-import {formatDate,percent} from '../lib/utils'
-export default function DetectionHistory(){const[params,setParams]=useSearchParams();const[q,setQ]=useState(''),[search,setSearch]=useState(''),[className,setClassName]=useState(''),[source,setSource]=useState(''),[date,setDate]=useState(''),[sort,setSort]=useState('desc'),[page,setPage]=useState(1),[selected,setSelected]=useState<Set<string>>(new Set()),[detail,setDetail]=useState<DetectionEvent|null>(null),[deleting,setDeleting]=useState<string[]|null>(null);const client=useQueryClient();useEffect(()=>{const id=setTimeout(()=>{setSearch(q);setPage(1)},300);return()=>clearTimeout(id)},[q]);useEffect(()=>{const id=params.get('event');if(id)api.get<DetectionEvent>(`/api/events/${id}`).then(r=>setDetail(r.data)).catch(e=>toast.error(errorMessage(e)))},[params]);const events=useQuery({queryKey:['events',{search,className,source,date,sort,page}],queryFn:()=>getEvents({q:search,class_name:className||undefined,source_type:source||undefined,since:date?`${date}T00:00:00Z`:undefined,until:date?`${date}T23:59:59.999Z`:undefined,sort,page})});const remove=useMutation({mutationFn:()=>api.post('/api/events/delete-many',{ids:deleting}),onSuccess:()=>{setDeleting(null);setSelected(new Set());setDetail(null);for(const key of ['events','summary','timeline','distribution'])client.invalidateQueries({queryKey:[key]});toast.success('Events and unreferenced evidence deleted.')},onError:e=>toast.error(errorMessage(e))});const filter=(setter:(v:string)=>void,value:string)=>{setter(value);setPage(1);setSelected(new Set())};const toggle=(id:string)=>setSelected(prev=>{const next=new Set(prev);if(next.has(id))next.delete(id);else next.add(id);return next});const close=()=>{setDetail(null);if(params.has('event'))setParams({})};return <><PageIntro title="Detection History" description="A thoughtful record of moments worth reviewing." action={<Badge><Activity size={13}/>{events.data?.total??'—'} saved events</Badge>}/><Card className="history-card"><SectionHeading title="Your detection library" description="Search, revisit, and make sense of your results." action={selected.size>0&&<Button variant="destructive" size="sm" onClick={()=>setDeleting([...selected])}><Trash2 size={14}/>Delete {selected.size}</Button>}/><div className="history-filters"><div className="search-field"><Search size={16}/><input aria-label="Search detection events" placeholder="Search your events…" value={q} onChange={e=>setQ(e.target.value)}/>{q&&<button aria-label="Clear search" onClick={()=>setQ('')}><X size={14}/></button>}</div><select aria-label="Filter by class" value={className} onChange={e=>filter(setClassName,e.target.value)}><option value="">All objects</option><option value="knife">Knife</option><option value="gun">Gun</option></select><select aria-label="Filter by source" value={source} onChange={e=>filter(setSource,e.target.value)}><option value="">All sources</option><option value="image">Image</option><option value="video">Video</option><option value="live">Live camera</option></select><input aria-label="Filter by date (UTC)" title="Date in UTC" type="date" value={date} onChange={e=>filter(setDate,e.target.value)}/><select aria-label="Sort events" value={sort} onChange={e=>filter(setSort,e.target.value)}><option value="desc">Newest first</option><option value="asc">Oldest first</option></select></div>{events.isPending?<Loading/>:events.isError?<ErrorState error={events.error} retry={()=>events.refetch()}/>:events.data.items.length?<><div className="table-scroll"><table><thead><tr><th><input type="checkbox" aria-label="Select visible events" checked={events.data.items.every(e=>selected.has(e.id))} onChange={e=>setSelected(e.target.checked?new Set(events.data.items.map(e=>e.id)):new Set())}/></th><th>Detection</th><th>Source</th><th>Confidence</th><th>Recorded</th><th>Status</th><th/></tr></thead><tbody>{events.data.items.map(e=><tr key={e.id}><td><input type="checkbox" aria-label={`Select event ${e.id}`} checked={selected.has(e.id)} onChange={()=>toggle(e.id)}/></td><td><button className="table-detection" onClick={()=>setDetail(e)}>{e.evidence_url?<img src={asset(e.evidence_url)} alt={`${e.class_name} evidence`}/>:<span className="event-placeholder"><Image size={18}/></span>}<span><strong>{e.class_name==='knife'?'Knife':'Gun'}</strong><small>{e.id.slice(0,8)}</small></span></button></td><td><span className="source-label">{e.source_type}</span></td><td><strong>{percent(e.confidence)}</strong></td><td className="muted">{formatDate(e.timestamp)}</td><td><Badge tone={e.is_alert?'warning':'neutral'}>{e.is_alert?'Needs review':'Detection'}</Badge></td><td><Button size="icon" variant="ghost" aria-label={`Delete event ${e.id}`} onClick={()=>setDeleting([e.id])}><Trash2 size={15}/></Button></td></tr>)}</tbody></table></div><div className="pagination"><span>{(page-1)*12+1}–{Math.min(page*12,events.data.total)} of {events.data.total} events</span><div><Button variant="outline" size="icon" aria-label="Previous page" disabled={page<=1} onClick={()=>setPage(page-1)}><ChevronLeft size={16}/></Button><span>Page {page}</span><Button variant="outline" size="icon" aria-label="Next page" disabled={page*12>=events.data.total} onClick={()=>setPage(page+1)}><ChevronRight size={16}/></Button></div></div></>:<EmptyState icon={Activity} title={search||className||source||date?'No matching moments':'Your story starts with an analysis'} description={search||className||source||date?'Try adjusting your search or filters.':'Detections from images, video, and live sessions are saved here for you to explore.'} action={<Button asChild variant="outline"><a href="/image">Analyze an image<ChevronRight size={15}/></a></Button>}/>}</Card><p className="page-footnote">Timestamps use your local timezone. Date filters use UTC. Model-generated indications require human review.</p><Dialog open={!!detail} onOpenChange={v=>!v&&close()} title="A closer look" description="Review the evidence alongside its model prediction.">{detail&&<div className="event-detail">{detail.evidence_url?<img className="detail-evidence" src={asset(detail.evidence_url)} alt="Saved annotated detection evidence"/>:<div className="evidence-removed">The evidence image has been deleted.</div>}<div className="event-detail-grid"><div><span>Object</span><strong>{detail.class_name}</strong></div><div><span>Confidence</span><strong>{percent(detail.confidence)}</strong></div><div><span>Source</span><strong>{detail.source_type}</strong></div><div><span>Recorded</span><strong>{formatDate(detail.timestamp)}</strong></div><div className="span-full"><span>Original source</span><strong>{detail.source_filename||detail.session_id||'—'}</strong></div><div className="span-full"><span>Normalized bounding box (xyxy)</span><code>{detail.bounding_box.map(n=>n.toFixed(4)).join(', ')}</code></div><div className="span-full"><span>Related analysis</span><code>{detail.job_id||'—'}</code></div></div><div className="dialog-actions"><Button variant="ghost" onClick={()=>setDeleting([detail.id])}><Trash2 size={15}/>Delete</Button>{detail.evidence_url&&<Button asChild variant="outline"><a href={asset(detail.evidence_url)+'?download=true'} download><ArrowDownToLine size={15}/>Export evidence</a></Button>}</div></div>}</Dialog><ConfirmDialog open={!!deleting} onClose={()=>setDeleting(null)} onConfirm={()=>remove.mutate()} busy={remove.isPending} title={`Delete ${deleting?.length===1?'this event':`${deleting?.length} events`}?`} description="This permanently removes the selected records and any evidence no longer referenced by another event."/></>}
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  Activity,
+  ArrowDownToLine,
+  ChevronLeft,
+  ChevronRight,
+  Image,
+  Search,
+  Trash2,
+  X,
+} from 'lucide-react'
+import { toast } from 'sonner'
+import { api, getEvents, errorMessage, asset } from '../services/api'
+import {
+  Card,
+  PageIntro,
+  SectionHeading,
+  EmptyState,
+  ErrorState,
+  Loading,
+  Badge,
+  ConfirmDialog,
+} from '../components/shared/Common'
+import { Dialog } from '../components/ui/dialog'
+import { Button } from '../components/ui/button'
+import type { DetectionEvent } from '../types'
+import { formatDate, percent } from '../lib/utils'
+export default function DetectionHistory() {
+  const [params, setParams] = useSearchParams()
+  const [q, setQ] = useState(''),
+    [search, setSearch] = useState(''),
+    [className, setClassName] = useState(''),
+    [source, setSource] = useState(''),
+    [date, setDate] = useState(''),
+    [sort, setSort] = useState('desc'),
+    [page, setPage] = useState(1),
+    [selected, setSelected] = useState<Set<string>>(new Set()),
+    [detail, setDetail] = useState<DetectionEvent | null>(null),
+    [deleting, setDeleting] = useState<string[] | null>(null)
+  const client = useQueryClient()
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setSearch(q)
+      setPage(1)
+    }, 300)
+    return () => clearTimeout(id)
+  }, [q])
+  useEffect(() => {
+    const id = params.get('event')
+    if (id)
+      api
+        .get<DetectionEvent>(`/api/events/${id}`)
+        .then((r) => setDetail(r.data))
+        .catch((e) => toast.error(errorMessage(e)))
+  }, [params])
+  const events = useQuery({
+    queryKey: ['events', { search, className, source, date, sort, page }],
+    queryFn: () =>
+      getEvents({
+        q: search,
+        class_name: className || undefined,
+        source_type: source || undefined,
+        since: date ? `${date}T00:00:00Z` : undefined,
+        until: date ? `${date}T23:59:59.999Z` : undefined,
+        sort,
+        page,
+      }),
+  })
+  const remove = useMutation({
+    mutationFn: () => api.post('/api/events/delete-many', { ids: deleting }),
+    onSuccess: () => {
+      setDeleting(null)
+      setSelected(new Set())
+      setDetail(null)
+      for (const key of ['events', 'summary', 'timeline', 'distribution'])
+        client.invalidateQueries({ queryKey: [key] })
+      toast.success('Events and unreferenced evidence deleted.')
+    },
+    onError: (e) => toast.error(errorMessage(e)),
+  })
+  const filter = (setter: (v: string) => void, value: string) => {
+    setter(value)
+    setPage(1)
+    setSelected(new Set())
+  }
+  const toggle = (id: string) =>
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  const close = () => {
+    setDetail(null)
+    if (params.has('event')) setParams({})
+  }
+  return (
+    <>
+      <PageIntro
+        title="Detection History"
+        description="A thoughtful record of moments worth reviewing."
+        action={
+          <Badge>
+            <Activity size={13} />
+            {events.data?.total ?? '—'} saved events
+          </Badge>
+        }
+      />
+      <Card className="history-card">
+        <SectionHeading
+          title="Your detection library"
+          description="Search, revisit, and make sense of your results."
+          action={
+            selected.size > 0 && (
+              <Button variant="destructive" size="sm" onClick={() => setDeleting([...selected])}>
+                <Trash2 size={14} />
+                Delete {selected.size}
+              </Button>
+            )
+          }
+        />
+        <div className="history-filters">
+          <div className="search-field">
+            <Search size={16} />
+            <input
+              aria-label="Search detection events"
+              placeholder="Search your events…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+            {q && (
+              <button aria-label="Clear search" onClick={() => setQ('')}>
+                <X size={14} />
+              </button>
+            )}
+          </div>
+          <select
+            aria-label="Filter by class"
+            value={className}
+            onChange={(e) => filter(setClassName, e.target.value)}
+          >
+            <option value="">All objects</option>
+            <option value="knife">Knife</option>
+            <option value="gun">Gun</option>
+          </select>
+          <select
+            aria-label="Filter by source"
+            value={source}
+            onChange={(e) => filter(setSource, e.target.value)}
+          >
+            <option value="">All sources</option>
+            <option value="image">Image</option>
+            <option value="video">Video</option>
+            <option value="live">Live camera</option>
+          </select>
+          <input
+            aria-label="Filter by date (UTC)"
+            title="Date in UTC"
+            type="date"
+            value={date}
+            onChange={(e) => filter(setDate, e.target.value)}
+          />
+          <select
+            aria-label="Sort events"
+            value={sort}
+            onChange={(e) => filter(setSort, e.target.value)}
+          >
+            <option value="desc">Newest first</option>
+            <option value="asc">Oldest first</option>
+          </select>
+        </div>
+        {events.isPending ? (
+          <Loading />
+        ) : events.isError ? (
+          <ErrorState error={events.error} retry={() => events.refetch()} />
+        ) : events.data.items.length ? (
+          <>
+            <div className="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>
+                      <input
+                        type="checkbox"
+                        aria-label="Select visible events"
+                        checked={events.data.items.every((e) => selected.has(e.id))}
+                        onChange={(e) =>
+                          setSelected(
+                            e.target.checked
+                              ? new Set(events.data.items.map((e) => e.id))
+                              : new Set(),
+                          )
+                        }
+                      />
+                    </th>
+                    <th>Detection</th>
+                    <th>Source</th>
+                    <th>Confidence</th>
+                    <th>Recorded</th>
+                    <th>Status</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {events.data.items.map((e) => (
+                    <tr key={e.id}>
+                      <td>
+                        <input
+                          type="checkbox"
+                          aria-label={`Select event ${e.id}`}
+                          checked={selected.has(e.id)}
+                          onChange={() => toggle(e.id)}
+                        />
+                      </td>
+                      <td>
+                        <button className="table-detection" onClick={() => setDetail(e)}>
+                          {e.evidence_url ? (
+                            <img src={asset(e.evidence_url)} alt={`${e.class_name} evidence`} />
+                          ) : (
+                            <span className="event-placeholder">
+                              <Image size={18} />
+                            </span>
+                          )}
+                          <span>
+                            <strong>{e.class_name === 'knife' ? 'Knife' : 'Gun'}</strong>
+                            <small>{e.id.slice(0, 8)}</small>
+                          </span>
+                        </button>
+                      </td>
+                      <td>
+                        <span className="source-label">{e.source_type}</span>
+                      </td>
+                      <td>
+                        <strong>{percent(e.confidence)}</strong>
+                      </td>
+                      <td className="muted">{formatDate(e.timestamp)}</td>
+                      <td>
+                        <Badge tone={e.is_alert ? 'warning' : 'neutral'}>
+                          {e.is_alert ? 'Needs review' : 'Detection'}
+                        </Badge>
+                      </td>
+                      <td>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          aria-label={`Delete event ${e.id}`}
+                          onClick={() => setDeleting([e.id])}
+                        >
+                          <Trash2 size={15} />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="pagination">
+              <span>
+                {(page - 1) * 12 + 1}–{Math.min(page * 12, events.data.total)} of{' '}
+                {events.data.total} events
+              </span>
+              <div>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  aria-label="Previous page"
+                  disabled={page <= 1}
+                  onClick={() => setPage(page - 1)}
+                >
+                  <ChevronLeft size={16} />
+                </Button>
+                <span>Page {page}</span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  aria-label="Next page"
+                  disabled={page * 12 >= events.data.total}
+                  onClick={() => setPage(page + 1)}
+                >
+                  <ChevronRight size={16} />
+                </Button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <EmptyState
+            icon={Activity}
+            title={
+              search || className || source || date
+                ? 'No matching moments'
+                : 'Your story starts with an analysis'
+            }
+            description={
+              search || className || source || date
+                ? 'Try adjusting your search or filters.'
+                : 'Detections from images, video, and live sessions are saved here for you to explore.'
+            }
+            action={
+              <Button asChild variant="outline">
+                <a href="/image">
+                  Analyze an image
+                  <ChevronRight size={15} />
+                </a>
+              </Button>
+            }
+          />
+        )}
+      </Card>
+      <p className="page-footnote">
+        Timestamps use your local timezone. Date filters use UTC. Model-generated indications
+        require human review.
+      </p>
+      <Dialog
+        open={!!detail}
+        onOpenChange={(v) => !v && close()}
+        title="A closer look"
+        description="Review the evidence alongside its model prediction."
+      >
+        {detail && (
+          <div className="event-detail">
+            {detail.evidence_url ? (
+              <img
+                className="detail-evidence"
+                src={asset(detail.evidence_url)}
+                alt="Saved annotated detection evidence"
+              />
+            ) : (
+              <div className="evidence-removed">The evidence image has been deleted.</div>
+            )}
+            <div className="event-detail-grid">
+              <div>
+                <span>Object</span>
+                <strong>{detail.class_name}</strong>
+              </div>
+              <div>
+                <span>Confidence</span>
+                <strong>{percent(detail.confidence)}</strong>
+              </div>
+              <div>
+                <span>Source</span>
+                <strong>{detail.source_type}</strong>
+              </div>
+              <div>
+                <span>Recorded</span>
+                <strong>{formatDate(detail.timestamp)}</strong>
+              </div>
+              <div className="span-full">
+                <span>Original source</span>
+                <strong>{detail.source_filename || detail.session_id || '—'}</strong>
+              </div>
+              <div className="span-full">
+                <span>Normalized bounding box (xyxy)</span>
+                <code>{detail.bounding_box.map((n) => n.toFixed(4)).join(', ')}</code>
+              </div>
+              <div className="span-full">
+                <span>Related analysis</span>
+                <code>{detail.job_id || '—'}</code>
+              </div>
+            </div>
+            <div className="dialog-actions">
+              <Button variant="ghost" onClick={() => setDeleting([detail.id])}>
+                <Trash2 size={15} />
+                Delete
+              </Button>
+              {detail.evidence_url && (
+                <Button asChild variant="outline">
+                  <a href={asset(detail.evidence_url) + '?download=true'} download>
+                    <ArrowDownToLine size={15} />
+                    Export evidence
+                  </a>
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+      </Dialog>
+      <ConfirmDialog
+        open={!!deleting}
+        onClose={() => setDeleting(null)}
+        onConfirm={() => remove.mutate()}
+        busy={remove.isPending}
+        title={`Delete ${deleting?.length === 1 ? 'this event' : `${deleting?.length} events`}?`}
+        description="This permanently removes the selected records and any evidence no longer referenced by another event."
+      />
+    </>
+  )
+}

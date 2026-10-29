@@ -1,6 +1,90 @@
-import {useRef,useState,type ChangeEvent} from 'react'
-import {CloudUpload,FileImage,Film,ImagePlus,ShieldCheck} from 'lucide-react'
-import {toast} from 'sonner'
-import {Button} from '../ui/button'
-export const validateFile=(file:File,kind:'image'|'video')=>{const extensions=kind==='image'?/\.(jpe?g|png|webp)$/i:/\.(mp4|mov|avi)$/i;if(!extensions.test(file.name))return kind==='image'?'Choose a JPG, PNG, or WEBP image.':'Choose an MP4, MOV, or AVI video.';if(file.size>(kind==='image'?20:500)*1024*1024)return `The ${kind} exceeds the ${kind==='image'?20:500} MB limit.`;if(!file.size)return 'This file is empty.';return null}
-export function UploadZone({kind,onFile,disabled=false}:{kind:'image'|'video';onFile:(file:File)=>void;disabled?:boolean}){const input=useRef<HTMLInputElement>(null);const[dragging,setDragging]=useState(false);const select=(file?:File)=>{if(!file||disabled)return;const error=validateFile(file,kind);if(error)toast.error(error);else onFile(file)};const change=(e:ChangeEvent<HTMLInputElement>)=>{select(e.target.files?.[0]);e.target.value=''};const Icon=kind==='image'?ImagePlus:Film;return <div className={`upload-zone ${dragging?'dragging':''}`} onDragOver={e=>{e.preventDefault();if(!disabled)setDragging(true)}} onDragLeave={()=>setDragging(false)} onDrop={e=>{e.preventDefault();setDragging(false);select(e.dataTransfer.files[0])}}><div className="upload-illustration"><div/><div/><span><Icon size={39} strokeWidth={1.2}/></span><i><CloudUpload size={19}/></i></div><span className="eyebrow">A NEW PERSPECTIVE STARTS HERE</span><h2>Drop your {kind} into focus.</h2><p>Drag and drop a file here, or choose one<br/>from your device to get started.</p><Button variant="outline" onClick={()=>input.current?.click()} disabled={disabled}><FileImage size={16}/>Choose {kind}</Button><input ref={input} type="file" aria-label={`Upload ${kind}`} accept={kind==='image'?'.jpg,.jpeg,.png,.webp':'.mp4,.mov,.avi'} onChange={change} hidden/><span className="upload-formats">{kind==='image'?'JPG, PNG or WEBP · Up to 20 MB':'MP4, MOV or AVI · Up to 500 MB'}</span><span className="upload-private"><ShieldCheck size={13}/>Only processed on your device</span></div>}
+import { useRef, useState, type ChangeEvent } from 'react'
+import { CloudUpload, FileImage, Film, ImagePlus, ShieldCheck } from 'lucide-react'
+import { toast } from 'sonner'
+import { Button } from '../ui/button'
+export const validateFile = (file: File, kind: 'image' | 'video') => {
+  const extensions = kind === 'image' ? /\.(jpe?g|png|webp)$/i : /\.(mp4|mov|avi)$/i
+  if (!extensions.test(file.name))
+    return kind === 'image'
+      ? 'Choose a JPG, PNG, or WEBP image.'
+      : 'Choose an MP4, MOV, or AVI video.'
+  if (file.size > (kind === 'image' ? 20 : 500) * 1024 * 1024)
+    return `The ${kind} exceeds the ${kind === 'image' ? 20 : 500} MB limit.`
+  if (!file.size) return 'This file is empty.'
+  return null
+}
+export function UploadZone({
+  kind,
+  onFile,
+  disabled = false,
+}: {
+  kind: 'image' | 'video'
+  onFile: (file: File) => void
+  disabled?: boolean
+}) {
+  const input = useRef<HTMLInputElement>(null)
+  const [dragging, setDragging] = useState(false)
+  const select = (file?: File) => {
+    if (!file || disabled) return
+    const error = validateFile(file, kind)
+    if (error) toast.error(error)
+    else onFile(file)
+  }
+  const change = (e: ChangeEvent<HTMLInputElement>) => {
+    select(e.target.files?.[0])
+    e.target.value = ''
+  }
+  const Icon = kind === 'image' ? ImagePlus : Film
+  return (
+    <div
+      className={`upload-zone ${dragging ? 'dragging' : ''}`}
+      onDragOver={(e) => {
+        e.preventDefault()
+        if (!disabled) setDragging(true)
+      }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(e) => {
+        e.preventDefault()
+        setDragging(false)
+        select(e.dataTransfer.files[0])
+      }}
+    >
+      <div className="upload-illustration">
+        <div />
+        <div />
+        <span>
+          <Icon size={39} strokeWidth={1.2} />
+        </span>
+        <i>
+          <CloudUpload size={19} />
+        </i>
+      </div>
+      <span className="eyebrow">A NEW PERSPECTIVE STARTS HERE</span>
+      <h2>Drop your {kind} into focus.</h2>
+      <p>
+        Drag and drop a file here, or choose one
+        <br />
+        from your device to get started.
+      </p>
+      <Button variant="outline" onClick={() => input.current?.click()} disabled={disabled}>
+        <FileImage size={16} />
+        Choose {kind}
+      </Button>
+      <input
+        ref={input}
+        type="file"
+        aria-label={`Upload ${kind}`}
+        accept={kind === 'image' ? '.jpg,.jpeg,.png,.webp' : '.mp4,.mov,.avi'}
+        onChange={change}
+        hidden
+      />
+      <span className="upload-formats">
+        {kind === 'image' ? 'JPG, PNG or WEBP · Up to 20 MB' : 'MP4, MOV or AVI · Up to 500 MB'}
+      </span>
+      <span className="upload-private">
+        <ShieldCheck size={13} />
+        Only processed on your device
+      </span>
+    </div>
+  )
+}
