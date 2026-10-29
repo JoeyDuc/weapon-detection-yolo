@@ -1,0 +1,8 @@
+# Relative to this YAML. Populate the directories with licensed data before training.
+path: .
+train: images/train
+val: images/val
+test: images/test
+names:
+  0: knife
+  1: gun

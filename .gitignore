@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+.env
+backend/data/
+*.pt
+*.onnx
+runs/
+test-results/
+playwright-report/
+*.tsbuildinfo
+.DS_Store
+.bootstrap/
+.python/

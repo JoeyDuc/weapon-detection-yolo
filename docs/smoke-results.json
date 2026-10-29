@@ -1,0 +1,45 @@
+{
+  "model": {
+    "ready": true,
+    "checkpoint": "../models/yolo11n.pt",
+    "supported_classes": [
+      "knife"
+    ],
+    "device": "mps",
+    "available_devices": [
+      "cpu",
+      "mps"
+    ],
+    "error": null,
+    "limitation": "Gun detection requires a custom checkpoint trained with a gun class. Standard COCO weights support knife only."
+  },
+  "image": {
+    "latency_ms": 6412.713041994721,
+    "roundtrip_ms": 6445.454750035424,
+    "detections": 0
+  },
+  "websocket": {
+    "latency_ms": 14.011208957526833,
+    "detections": 0,
+    "alerts": 0
+  },
+  "video": {
+    "status": "completed",
+    "bytes": 1812,
+    "readable": true,
+    "frame_count": 8,
+    "width": 320,
+    "height": 240,
+    "playback_url": "/api/files/outputs/b5d0f1bf26704003a656320c3f0f63e6.mp4"
+  },
+  "statistics": {
+    "total_analyses": 3,
+    "total_detections": 0,
+    "average_confidence": 0,
+    "alerts_generated": 0
+  },
+  "notes": [
+    "Actual YOLO inference on benign, uniform fixtures. No positive detection or accuracy claim.",
+    "Device latency is observed for these frames only, not a representative FPS benchmark."
+  ]
+}
